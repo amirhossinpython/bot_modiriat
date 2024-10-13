@@ -1,0 +1,6 @@
+rubpy
+requests
+pyowm
+gtts
+khayyam
+Pillow
