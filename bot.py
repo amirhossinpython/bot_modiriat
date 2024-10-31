@@ -2,47 +2,48 @@ import os
 import subprocess
 import sys
 from datetime import datetime
+import sqlite3
+import re
+import random
+from chat_bot import chat_bot_response,get_song
+import asyncio
+import prayer_times
 from PIL import Image
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import shutil
+from io import BytesIO
 def install(package):
     subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 try:
     import rubpy
     from rubpy import Client, filters, utils
     from rubpy.types import Updates
+    from rubpy.enums import ReportType
 except ImportError:
     install('rubpy')
     import rubpy
     from rubpy import Client, filters, utils, exceptions
     from rubpy.types import Updates
+    from rubpy.enums import ReportType
 
 try:
     import requests
 except ImportError:
     install('requests')
     import requests
-try:
-    from pyowm import OWM
-except ImportError:
-    install('pyowm')
-try:
-    from gtts import gTTS
-except ImportError:
-    install("gtts")
-    from gtts import gTTS
-try :
-    from khayyam import JalaliDatetime
-except ImportError :
-    install("khayyam")
-    
-    
-import re
-import random
+
 # ساخت بات
 bot = Client(name='Ai_bot')
 
-help_="""
-
+music_styles = [
+    "1- Pop 🎉", "2- Intense 🔥", "3- Violin 🎻", "4- Anthemic 🎺", 
+    "5- Male Voice 👨‍🎤", "6- Funk 🎵", "7- Ethereal 🌌", 
+    "8- Hard Rock 🤘", "9- Groovy 🎸", "10- Soul 🎷", 
+    "11- Psychedelic 🌈", "12- Catchy 🎶", "13- Male Vocals 🎤", 
+    "14- Japanese 🇯🇵", "15- Ambient 🌌", "16- Atmospheric ☁️", 
+    "17- Synth 🎹", "18- Dreamy 🌙", "19- Electric Guitar 🎸"
+]
+help_ = """
 سلام!
 ربات مدیریت گپ فعال شد و با امکانات جدید آماده است تا به بهتر شدن فضای گروه کمک کنه. بیایید یه نگاهی به قابلیت‌های جدید ربات بندازیم:
 
@@ -60,34 +61,58 @@ help_="""
 بن
 ریم
 اخراج
+
 قفل کردن محتوا:
 ربات می‌تونه ارسال متن، عکس، گیف و ویس رو هم قفل کنه. یعنی در مواقع ضروری، امکان ارسال این نوع محتواها محدود میشه تا گروه منظم‌تر بمونه.
 
 قابلیت چت با هوش مصنوعی:
 با استفاده از این ربات، می‌تونید با هوش مصنوعی هم گفت‌وگو کنید. برای استفاده از این قابلیت، کافیه قبل از متن خودتون علامت + رو قرار بدید. ربات پیام شما رو پردازش کرده و پاسخ می‌ده.
-
-ساخت تصویر:
+از * هم میتونید استفاده کنید برای چت با هوش مصنوعی مثال ها :
++سلام
+/سلام
+✨ قابلیت ساخت تصویر:
 برای ساخت تصویر کافیه دستور تصویر رو به همراه توضیحات ارسال کنید. برای مثال:
 
-
 تصویر سلام
-تولید ویس:
-برای تولید ویس هم از دستور voice استفاده کنید. متنی که می‌خواید تبدیل به صدا بشه رو بعد از voice وارد کنید. برای مثال:
+image man
 
 
-voice hi
-قابلیت گرفتن وضعیت هوا:
-برای دریافت وضعیت هوا کافیه دستور هوا رو به همراه نام شهر ارسال کنید. برای مثال:
 
-هوا:Mashhad
+
+
 
 """
+
+def get_response_from_api(user_input):
+    url = "https://api.api-code.ir/gpt-4/"
+    payload = {"text": user_input}
+
+    try:
+        response = requests.get(url, params=payload)
+        response.raise_for_status()  # بررسی وضعیت پاسخ
+        
+        data = response.json()
+        return data['result']  # فقط نتیجه را برمی‌گرداند
+
+    except requests.exceptions.HTTPError as http_err:
+        return f"HTTP error occurred: {http_err}"
+    except requests.exceptions.RequestException as req_err:
+        return f"Request error occurred: {req_err}"
+    except Exception as e:
+        return f"An error occurred: {e}"
+
+
 
 
 # دیکشنری برای نگهداری اخطارهای کاربران
 warnings = {}
+# دیکشنری جملات احوال‌پرسی و مکالمه‌های محاوره‌ای فارسی به ترکی (با حروف فارسی)
 
-# حداکثر تعداد اخطار قبل از حذف
+
+# تست برنامه
+
+
+
 MAX_WARNINGS = 4
 responses_dict = {
     'greetings': [
@@ -226,22 +251,9 @@ responses_dict = {
 }
 
 # الگوی شناسایی لینک و آیدی تلگرام
-LINK_REGEX = r"(https?://\S+|www\.\S+|@[\w_]+)"
-def read_bad_words(file_path):
-    with open(file_path, "r", encoding="utf-8") as file:  # تغییر کدگذاری به utf-8
-        words = [line.strip() for line in file if line.strip()]
-    return words
+LINK_REGEX = r"(https?://\S+|www\.\S+)"  # حذف حساسیت به شناسه‌های کاربری
 
-# ایجاد الگوهای منظم برای شناسایی انواع کلمات مستهجن و سانسور شده
-def create_patterns(words):
-    patterns = []
-    for word in words:
-        # ایجاد الگو برای شناسایی کلمات با انواع مختلف سانسور
-        pattern = re.escape(word)
-        pattern = pattern.replace(r'\ ', r'\s*')
-        pattern = pattern.replace(r'\*', r'\s*')
-        patterns.append(re.compile(r'\b{}\b'.format(pattern), re.IGNORECASE))
-    return patterns
+
 def chatgpt(text):
     s = requests.Session()
     api_url = f"http://api-free.ir/api/bard.php?text={text}"
@@ -258,90 +270,9 @@ def chatgpt(text):
     except KeyError:
         return "Error: Unexpected response format."
 
-        
-       
-def contains_prohibited_word(text, patterns):
-    """
-    بررسی می‌کند که آیا متن شامل کلمات مستهجن است یا خیر.
-    """
-    text = text.lower()  # تبدیل متن به حروف کوچک برای مقایسه
-    for pattern in patterns:
-        if pattern.search(text):
-            return True
-    return False
-def processing_voice(text, output_file):
-    languages = {
-    "af": "Afrikaans",
-    "ar": "Arabic",
-    "bg": "Bulgarian",
-    "bn": "Bengali",
-    "bs": "Bosnian",
-    "ca": "Catalan",
-    "cs": "Czech",
-    "da": "Danish",
-    "de": "German",
-    "el": "Greek",
-    "en": "English",
-    "es": "Spanish",
-    "et": "Estonian",
-    "fi": "Finnish",
-    "fr": "French",
-    "gu": "Gujarati",
-    "hi": "Hindi",
-    "hr": "Croatian",
-    "hu": "Hungarian",
-    "id": "Indonesian",
-    "is": "Icelandic",
-    "it": "Italian",
-    "iw": "Hebrew",
-    "ja": "Japanese",
-    "jw": "Javanese",
-    "km": "Khmer",
-    "kn": "Kannada",
-    "ko": "Korean",
-    "la": "Latin",
-    "lv": "Latvian",
-    "ml": "Malayalam",
-    "mr": "Marathi",
-    "ms": "Malay",
-    "my": "Myanmar (Burmese)",
-    "ne": "Nepali",
-    "nl": "Dutch",
-    "no": "Norwegian",
-    "pl": "Polish",
-    "pt": "Portuguese",
-    "ro": "Romanian",
-    "ru": "Russian",
-    "si": "Sinhala",
-    "sk": "Slovak",
-    "sq": "Albanian",
-    "sr": "Serbian",
-    "su": "Sundanese",
-    "sv": "Swedish",
-    "sw": "Swahili",
-    "ta": "Tamil",
-    "te": "Telugu",
-    "th": "Thai",
-    "tl": "Filipino",
-    "tr": "Turkish",
-    "uk": "Ukrainian",
-    "ur": "Urdu",
-    "vi": "Vietnamese",
-    "zh-CN": "Chinese (Simplified)",
-    "zh-TW": "Chinese (Mandarin/Taiwan)",
-    "zh": "Chinese (Mandarin)"
-}
 
-    
+         
        
-        
-        
-   
-    selected_language = random.choice(list(languages.keys()))
-    language_name = languages[selected_language]
-    
-    speech = gTTS(text=text, lang=selected_language, slow=False)
-    speech.save(output_file)
 def photo_ai(text,file_name):
     try:
         response = requests.get(f"http://api-free.ir/api/img.php?text={text}&v=3.5")
@@ -357,15 +288,16 @@ def photo_ai(text,file_name):
         return "Image downloaded and saved as 'downloaded_image.jpg'."
     except requests.RequestException as e:
         return f"Error: Unable to download image. {str(e)}"
+
 # خواندن کلمات از فایل متنی
-bad_words = read_bad_words("bad_words.txt")
-bad_patterns = create_patterns(bad_words)
+
 photo_lock = False
 gif_lock =False
 text_lock = False
 voice_lock=False
-
-GROUP_GUID='محل گوید گروه'
+user_data = {}
+is_reporting = {}
+GROUP_GUID='guid'
 # تابع بررسی اینکه آیا کاربر ادمین است یا نه
 MEMBERS_PER_MESSAGE = 50
 
@@ -383,7 +315,7 @@ async def updates(update: Updates):
         # شناسایی لینک یا آیدی در پیام
     if re.search(LINK_REGEX, message_text):
         # بررسی اینکه کاربر ادمین است یا نه
-        is_admin = await update.is_admin(GROUP_GUID, user_id)  # استفاده از await برای فراخوانی متد
+        is_admin = await update.is_admin(chat_id, user_id)  # استفاده از await برای فراخوانی متد
 
         if is_admin:
             # اگر کاربر ادمین باشد، لینک مجاز است
@@ -415,7 +347,7 @@ async def warn_or_ban_user_by_admin(update: Updates):
    
         
     try:
-        if group and update.is_admin(user_guid=update.author_guid):  # بررسی اینکه کاربر ادمین است
+        if group and await update.is_admin(user_guid=update.author_guid):  # بررسی اینکه کاربر ادمین است
             if update.reply_message_id:
                 replied_message = await update.get_messages(message_ids=update.reply_message_id)
                 user_id = replied_message.messages[0].author_object_guid
@@ -446,81 +378,9 @@ async def warn_or_ban_user_by_admin(update: Updates):
         await update.reply("🚫 خطایی رخ داد. ممکن است کاربر ادمین باشد یا خطای دیگری رخ داده است.")
 
 
-@bot.on_message_updates(filters.is_group)
-async def delete_message(update: Updates):
-    
-        
-    if contains_prohibited_word(update.text, bad_patterns):
-        a=await update.delete_messages()
-        print(f"text :\n{update.text}\ndeleted:\n {a} ")
-        messages = [
-    "پیام شما به دلیل محتوای توهین‌آمیز حذف شد. لطفاً از زبان محترمانه استفاده کنید.",
-    "شما اجازه ارسال پیام‌های توهین‌آمیز را ندارید. از رفتار محترمانه پیروی کنید.",
-    "پیام شما حاوی الفاظ ناشایست بود و پاک شد. ادامه چنین رفتاری منجر به اقدامات شدیدتری خواهد شد.",
-    "از شما درخواست می‌شود از ارسال پیام‌های توهین‌آمیز خودداری کنید، در غیر این صورت حساب کاربری شما مسدود خواهد شد.",
-    "پیام‌های فحاشی و توهین‌آمیز خلاف قوانین است. لطفاً از ادبیات مناسب استفاده کنید.",
-    "پیام شما به دلیل استفاده از کلمات ناپسند حذف شد. این رفتار قابل قبول نیست.",
-    "به دلیل ارسال پیام‌های حاوی الفاظ نامناسب، پیام شما پاک شد. برای ادامه استفاده از پلتفرم، ادب و احترام را رعایت کنید.",
-    "لطفاً از ارسال فحش و توهین به دیگران خودداری کنید. در صورت تکرار، دسترسی شما محدود خواهد شد.",
-    "رفتار شما نامناسب است و پیام شما به دلیل محتوای غیر اخلاقی حذف شد. از ادبیات محترمانه استفاده کنید.",
-    "هشدار: ارسال پیام‌های حاوی فحش و توهین منجر به محدودیت یا مسدود شدن حساب کاربری شما خواهد شد.",
-    "بیشعور نباشید، فحاشی نکنید. این کار خلاف اخلاق و احترام است.",
-    "فحاشی گناه است! بهتر است از کلمات مناسب و محترمانه استفاده کنید.",
-    "لطفاً از ادبیات توهین‌آمیز خودداری کنید. این رفتار شما پذیرفتنی نیست.",
-    "بس کنید! فحاشی باعث رنجش دیگران می‌شود. به دیگران احترام بگذارید.",
-    "بی‌ادبانه فحش ندهید. پیام‌های شما پاک می‌شود و ممکن است مسدود شوید.",
-    "این آخرین هشدار است! فحاشی و توهین ادامه یابد، دسترسی شما محدود خواهد شد.",
-    "بجای فحاشی، از گفتگوهای سازنده استفاده کنید. ادب کلید ارتباطات موفق است.",
-    "گناه است که با زبان خود دیگران را آزار دهید. پیام‌های توهین‌آمیز ممنوع است.",
-    "حواستان به گفتارتان باشد! فحاشی و الفاظ زشت فقط شما را از دیگران دورتر می‌کند.",
-    "بس کنید، این نوع صحبت باعث ناراحتی دیگران می‌شود. ادب را رعایت کنید."
-]
-        f =random.choice(messages)
-        
-
-        await update.reply(f)
-    elif any(update.text.startswith(emoji) for emoji in ['🍆', '🌈', '🏳️‍🌈', '💧', '🍌', '🍑']):
-        a = await update.delete_messages()
 
         
-@bot.on_message_updates(filters.is_group, filters.Commands(["اعضا"]))
-async def get_all_members(update: Updates):
-    if update.object_guid == GROUP_GUID:
-        
-    
-            
-        if update.text == "/اعضا":
-            try:
-                has_continue = True
-                next_start_id = None
-                count = 1
-                all_members = []
 
-                while has_continue:
-                    # دریافت اعضای گروه به صورت دسته‌ای
-                    result = await bot.get_members(object_guid=GROUP_GUID, start_id=next_start_id)
-                    next_start_id = result.next_start_id  # ID بعدی برای دریافت اعضا
-                    has_continue = result.has_continue  # آیا دریافت اعضا ادامه دارد؟
-                    in_chat_members = result.in_chat_members  # لیست اعضای دریافت‌شده
-
-                    # اضافه کردن نام و نام خانوادگی اعضای دریافت‌شده به لیست
-                    for in_chat_member in in_chat_members:
-                        first_name = in_chat_member.first_name 
-                        last_name = in_chat_member.last_name or ""  # اگر نام خانوادگی نداشت، خالی باشد
-                        full_name = f"{first_name} {last_name}".strip()  # ترکیب نام و نام خانوادگی
-                        all_members.append(full_name)
-                        count += 1
-
-                # تقسیم اعضا به گروه‌های کوچک‌تر و ارسال پیام‌ها به صورت بخش‌بخش
-                for i in range(0, len(all_members), MEMBERS_PER_MESSAGE):
-                    part = all_members[i:i+MEMBERS_PER_MESSAGE]
-                    member_names = '\n'.join([f"{i+1}. {name}" for i, name in enumerate(part)])
-                    await update.reply(f"لیست اعضای گروه (بخش {i//MEMBERS_PER_MESSAGE + 1}):\n{member_names}")
-
-            except exceptions.InvalidInput:
-                await update.reply("خطا: گروه یا کانال یافت نشد.")
-            except Exception as e:
-                await update.reply(f"خطایی رخ داد: {str(e)}")
   
 @bot.on_message_updates(filters.is_group, filters.Commands(['بن', 'اخراج'], prefixes=''))
 def ban_user_by_admin(update: Updates):
@@ -558,37 +418,38 @@ def toggle_locks(update: Updates):
     global text_lock
     global  gif_lock
     global voice_lock
-   
+    group = update.object_guid
     
-    if update.text == "/قفل_عکس":
-        photo_lock = True
-        update.reply("قفل عکس فعال شد. عکس‌ها پاک خواهند شد.")
-    elif update.text == "/باز_کردن_عکس":
-        photo_lock = False
-        update.reply("قفل عکس غیرفعال شد. عکس‌ها پاک نخواهند شد.")
-    elif update.text == "/قفل_متن":
-        
-        
-        text_lock = True
-        update.reply("قفل متن فعال شد. پیام‌های متنی پاک خواهند شد.")
-    elif update.text == "/باز_کردن_متن":
-        text_lock = False
-        update.reply("قفل متن غیرفعال شد. پیام‌های متنی پاک نخواهند شد.")
-    elif update.text =="/قفل_گیف":
-        gif_lock =True
-        update.reply("قفل گیف فعال شد .گیف هاپاک خواهند شد")
-    elif update.text=="/باز_کردن_گیف":
-        gif_lock=False
-        update.reply("قفل گیف باز شد شما مجازیدبه گیف بفرستید")      
-    elif update.text=="/قفل_ویس":
-        voice_lock=True
-        update.reply("قفل ویس فعال شد .ویس ها پاک میشن")
-    elif update.text=="/بازکردن_ویس" :
-        
-        voice_lock= False
-        update.reply("قفل ویس باز شد . میتونید ویس بدید")
-        
-        
+    if group and update.is_admin(user_guid=update.author_guid):
+        if update.text == "/قفل_عکس":
+            photo_lock = True
+            update.reply("قفل عکس فعال شد. عکس‌ها پاک خواهند شد.")
+        elif update.text == "/باز_کردن_عکس":
+            photo_lock = False
+            update.reply("قفل عکس غیرفعال شد. عکس‌ها پاک نخواهند شد.")
+        elif update.text == "/قفل_متن":
+            
+            
+            text_lock = True
+            update.reply("قفل متن فعال شد. پیام‌های متنی پاک خواهند شد.")
+        elif update.text == "/باز_کردن_متن":
+            text_lock = False
+            update.reply("قفل متن غیرفعال شد. پیام‌های متنی پاک نخواهند شد.")
+        elif update.text =="/قفل_گیف":
+            gif_lock =True
+            update.reply("قفل گیف فعال شد .گیف هاپاک خواهند شد")
+        elif update.text=="/باز_کردن_گیف":
+            gif_lock=False
+            update.reply("قفل گیف باز شد شما مجازیدبه گیف بفرستید")      
+        elif update.text=="/قفل_ویس":
+            voice_lock=True
+            update.reply("قفل ویس فعال شد .ویس ها پاک میشن")
+        elif update.text=="/بازکردن_ویس" :
+            
+            voice_lock= False
+            update.reply("قفل ویس باز شد . میتونید ویس بدید")
+            
+            
         
             
         
@@ -634,9 +495,10 @@ def handle_gif_message(update: Updates):
 
 
 
-@bot.on_message_updates(filters.is_group,filters.Commands(['دستورات','help']))  
+@bot.on_message_updates(filters.is_group,filters.Commands(['دستورات','help'],prefixes=''))  
 def send_command(update: Updates)   :
     
+
         
     update.reply(help_)
        
@@ -657,26 +519,7 @@ def handle_voice_message(update: Updates):
 
    
 
-@bot.on_message_updates(filters.is_group,filters.Commands(["create_poll","نظرسنجی","نظر"]))
-def create_poll(update: Updates):
-    
-    question = "نظر شما درباره کیفیت خدمات ما چیست؟"
-    options = ["عالی", "خوب", "متوسط", "ضعیف"]
-    try:
-        # ایجاد نظرسنجی
-        poll = bot.create_poll(
-            object_guid=GROUP_GUID,
-            question=question,
-            options=options,
-            is_anonymous=False,
-            allows_multiple_answers=False
-        )
 
-        # ارسال پیام تایید
-        bot.send_message(GROUP_GUID, f'نظرسنجی با موفقیت ایجاد شد: {poll}')
-       
-    except Exception as e:
-        bot.send_message(GROUP_GUID, f'خطا در ایجاد نظرسنجی: {str(e)}')
     
     
     
@@ -684,22 +527,37 @@ def create_poll(update: Updates):
 def handle_message_text(update: Updates):
     greeting_message = random.choice(responses_dict['greetings'])
     if update.text.startswith('+'):
-        update.reply("لطفاً کمی صبر کنید، در حال پردازش درخواست شما هستیم. ممکن است به دلیل تأخیر در وب‌سرویس زمان بیشتری طول بکشد. از شکیبایی شما سپاسگزاریم! 🙏")
+        update.reply("لطفاً کمی صبر کنید، در حال پردازش درخواست شما هستیم. "
+              "اگر با تأخیر مواجه شدید، ممکن است وب‌سرویس شلوغ یا در حال تعمیر باشد. "
+              "از شکیبایی و همکاری شما سپاسگزاریم! 🙏")
+
         user_input = update.text[1:].strip()  # متن بدون "+"
         api_response = chatgpt(user_input)
         update.reply(api_response)
         return  
     
     
+    
+    elif update.text.startswith("/"):
+        update.reply("لطفاً کمی صبر کنید، در حال پردازش درخواست شما هستیم. "
+              "اگر با تأخیر مواجه شدید، ممکن است وب‌سرویس شلوغ یا در حال تعمیر باشد. "
+              "از شکیبایی و همکاری شما سپاسگزاریم! 🙏")
+
+        user_input = update.text[1:].strip()
+        api_response =get_response_from_api(user_input)
+        update.reply(api_response)
+        return
+    
+                
+    
+    
     if re.search(r'\bسلام\b', update.text.lower()):
         update.reply(greeting_message)
 
-    # 2. پاسخ به پیام‌هایی که شامل "خوبی" و "ربات" یا مشابه آن هستند
-    if re.search(r'(خوبی.*(ربات|بات|میربات))|(ربات.*خوبی)', update.text.lower()):
-        update.reply(random.choice(responses_dict['how_are_you']))
+  
 
     # 3. پاسخ به پیام‌هایی که با "ربات" یا "میربات" شروع می‌شوند
-    if re.match(r'^(ربات|میربات|بات)', update.text.lower()):
+    if re.match(r'^(ربات||بات)', update.text.lower()):
         update.reply(random.choice(responses_dict['robot_responses']))
 
     # 4. پاسخ به پیام‌هایی که صرفاً درباره "خوبی" هستند
@@ -748,107 +606,282 @@ def generate_image_from_text(update: Updates):
         except Exception as e:
             
             update.reply(f"erorr :{e}")
-            
-
+    elif update.text.startswith("image"):
         
+        user_text =update.text.replace('image','').strip()
+        
+        update.reply("لطفاً کمی صبر کنید، در حال پردازش درخواست شما هستیم. ممکن است به دلیل تأخیر در وب‌سرویس زمان بیشتری طول بکشد. از شکیبایی شما سپاسگزاریم! 🙏")
+        try:
+            
+            
+        # درخواست به وب‌سرویس
+            url = f"https://api.api-code.ir/image-gen/?text={user_text}"
+            response = requests.get(url)
+            
+            if response.status_code == 200:
+                data = response.json()
+                image_url = data['image_url']
+                
+                # دانلود تصویر
+                image_response = requests.get(image_url)
+                
+                if image_response.status_code == 200:
+                    # ذخیره تصویر به عنوان فایل موقت
+                    image = Image.open(BytesIO(image_response.content))
+                    image_path = f"{user_text}.png"
+                    image.save(image_path)
+                    
+                    # ارسال تصویر به کاربر
+                    update.reply_photo(image_path, caption='اینجا تصویر شماست!')
+                else:
+                    update.reply('خطا در دانلود تصویر.')
+            else:
+                update.reply('خطا در دریافت URL تصویر.')
+        except Exception as p:
+            update.reply(f"erorr:{p}")
+            
+    
+                
+                   
 
      
-@bot.on_message_updates(filters.is_group)
-def send_voice_ai(update: Updates):
-    if update.text and update.text.startswith('voice'):
-        try:
-            # دریافت محتوای بعد از "voice"
-            voice_text = update.text[6:].strip()  # حذف کلمه "voice" و فاصله‌ها
-
-            if voice_text:  # بررسی اینکه محتوای متنی بعد از "voice" وجود دارد
-                update.reply("در حال ساخت ویس...")
-
-                # پردازش ویس با محتوای دریافت شده
-                rs = processing_voice(voice_text, 'voice.mp3')
-
-                # ارسال فایل صوتی
-                with open("voice.mp3", 'rb') as voice_file:
-                    update.reply_voice('voice.mp3', caption="ویس شما آماده شد")
-       
-        except Exception as e:
-            update.reply(f"خطایی رخ داد: {str(e)}")   
-        finally:
-            if os.path.exists("voice.mp3"):
-                os.remove("voice.mp3")
 
 
-                
-@bot.on_message_updates(filters.is_group)
-def get_weather_info(update: Updates):
-    owm = OWM('api_key')   #ایپی کی خود را بزارید
-    mgr = owm.weather_manager()
-    location=update.text.replace("هوا:","")
+@bot.on_message_updates(filters.is_group, filters.Commands(['لینک', 'link'], ''))
+def send_group_link(update: Updates): 
+    group = update.object_guid
+    if group:
+        link = bot.get_group_link(update.object_guid)
+        return  update.reply(f' بفرماید لینک گروه\n{link.join_link}')
     
-    if update.text.startswith("هوا:"):
-        update.reply("درحال به دست اوردن اطلاعات اب وهوا")
-        
-        try:
-            
-            # دریافت اطلاعات فعلی آب و هوا بر اساس مکان
-            observation = mgr.weather_at_place(location)
-            w = observation.weather
 
-            # استخراج اطلاعات مورد نیاز
-            status = w.detailed_status
-            temperature = w.temperature('celsius')
-            humidity = w.humidity
-            wind = w.wind()
-            pressure = w.pressure['press']
-            clouds = w.clouds
-            rain = w.rain
-            heat_index = w.heat_index
 
-            # نمایش اطلاعات
-            print(f'اطلاعات آب و هوا در {location}:')
-            print(f'وضعیت: {status}')
-            print(f"دمای فعلی: {temperature['temp']}°C (کمینه: {temperature['temp_min']}°C, بیشینه: {temperature['temp_max']}°C)")
-            print(f'رطوبت: {humidity}%')
-            print(f"باد: {wind['speed']} متر بر ثانیه، جهت: {wind['deg']} درجه")
-            print(f'فشار هوا: {pressure} hPa')
-            print(f'ابرها: {clouds}%')
-            print(f'باران: {rain}')
-            print(f'شاخص حرارت: {heat_index}')
-            update.reply(f"اطلاعات آب و هوا در {location}: \n وضعیت: {status}\nباد: {wind['speed']} متر بر ثانیه، جهت: {wind['deg']} درجه\nفشار هوا: {pressure} hPa \n ابرها: {clouds}%'\n باران: {rain}'\n شاخص حرارت: {heat_index}")
-            
-        except NotADirectoryError:
-            print(f'مکان "{location}" یافت نشد!')
-        except AttributeError:
-            print('خطا در دریافت اطلاعات آب و هوا.')
-        except UnboundLocalError:
-            print('کلید API نامعتبر است. لطفاً یک کلید API معتبر وارد کنید.')
-        except Exception as p :
-            update.reply(f"erorr:\n{p}")
-
-           
- 
-@bot.on_message_updates(filters.is_group, filters.Commands(["تاریخ", "زمان"], prefixes=''))
-def send_data(update: Updates):
-    # زمان فعلی به شمسی
-    current_time_jalali = JalaliDatetime.today().strftime("%A %d %B %Y")
     
-    # زمان فعلی به میلادی
-    current_time_gregorian = datetime.now().strftime("%A %d %B %Y")
-    
-    # ساخت متن خروجی به صورت یک رشته
-    result = (
-        f"تاریخ به شمسی:\n{current_time_jalali}\n"
-        f"تاریخ به میلادی:\n{current_time_gregorian}"
+# هندلر برای دریافت سبک و متن آهنگ
+@bot.on_message_updates(filters.Commands(['موزیک'],prefixes=''), filters.is_group)
+async def music(update: Updates):
+    user_id = update.object_guid
+
+    # اگر کاربری در حال استفاده از ربات است، به کاربر جدید پاسخ داده نشود
+    if any('style' in user for user in user_data.values()):
+        await update.reply("لطفاً صبر کنید، یک کاربر دیگر در حال استفاده از ربات است.")
+        return
+
+    # ایجاد دیکشنری جدید برای ذخیره اطلاعات کاربر
+    user_data[user_id] = {}
+
+    welcome_message = (
+        "سلام! 🎶\n"
+        "من یک ربات برای ساخت آهنگ هستم. با استفاده از لیست زیر می‌توانید یک سبک موسیقی انتخاب کنید.\n\n"
+        "لطفاً عدد مرتبط با سبک مورد نظر را وارد کنید:\n\n"
     )
+    styles = "\n".join(music_styles)
+    await update.reply(welcome_message + styles)
 
-    # ارسال پیام به گروه
-    update.reply(result)
-    
-    
-    
-    
+# هندلر برای نمایش راهنما
+@bot.on_message_updates(filters.Commands(['کمک'],prefixes=''), filters.is_group)
+async def help_command(update: Updates):
+    help_message = (
+        "/موزیک - شروع و انتخاب سبک موسیقی\n"
+        "/کمک - دریافت راهنما\n"
+        "پس از انتخاب سبک، از شما خواسته می‌شود متن آهنگ خود را وارد کنید."
+    )
+    await update.reply(help_message)
 
-                
+# هندلر برای دریافت سبک و متن آهنگ
+@bot.on_message_updates(filters.is_group)
+async def choose_style(update: Updates):
+    user_id = update.object_guid
 
-   
-# اجرای بات
+    # فقط به کاربرانی که دستور "/موزیک" را فرستاده‌اند پاسخ بدهد
+    if user_id not in user_data:
+        return
+
+    # اگر کاربر هنوز سبکی انتخاب نکرده
+    if 'style' not in user_data[user_id]:
+        try:
+            # دریافت شماره انتخابی کاربر
+            style_index = int(update.message.text.strip()) - 1
+            if 0 <= style_index < len(music_styles):
+                style_name = music_styles[style_index].split("- ")[1]
+                user_data[user_id]['style'] = style_name
+                await update.reply(f"سبک {style_name} انتخاب شد. 🎶\nحالا متن آهنگ رو ارسال کن:")
+            else:
+                await update.reply("لطفاً یک عدد معتبر انتخاب کنید.")
+        except ValueError:
+            await update.reply("لطفاً یک عدد معتبر انتخاب کنید.")
+
+    # دریافت متن آهنگ
+    elif 'text' not in user_data[user_id]:
+        user_data[user_id]['text'] = update.message.text.strip()
+        await update.reply("منتظر باش تا آهنگت ساخته بشه 🎵...")
+
+        # ساخت موسیقی با API
+        style = user_data[user_id]['style']
+        text = user_data[user_id]['text']
+        music_url = await create_music(style, text)
+
+        if music_url:
+            # دانلود و ارسال آهنگ به کاربر
+            await send_music(update, music_url)
+        else:
+            await update.reply("مشکلی در ساخت موسیقی پیش آمد. لطفاً دوباره امتحان کنید.")
+
+        # پاک کردن دیتا بعد از ارسال آهنگ
+        del user_data[user_id]
+
+# تابع برای ساخت موسیقی با API
+async def create_music(style, text):
+    api_url = "https://api.api-code.ir/c-music/"
+    params = {
+        "style": style.replace(' ', '').lower(),  # تغییر سبک به فرمت مناسب برای API
+        "text": text.replace(' ', '+')  # جایگزینی فاصله‌ها با + برای API
+    }
+    
+    try:
+        response = requests.get(api_url, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            if data["status"] == "success":
+                return data["music_url"]
+        return None
+    except Exception as e:
+        print(f"Error in API request: {e}")
+        return None
+
+# تابع برای دانلود و ارسال موسیقی
+async def send_music(update: Updates, music_url):
+    try:
+        music_response = requests.get(music_url)
+        if music_response.status_code == 200:
+            file_name = "music.mp3"
+            with open(file_name, "wb") as f:
+                f.write(music_response.content)
+            await update.reply('منتظربمانید تا پردازش کنیم')
+            # ارسال فایل موسیقی به کاربر
+            await update.reply_document(file_name, caption="این هم آهنگت 🎵")
+        else:
+            await update.reply("مشکلی در دانلود موسیقی پیش آمد.")
+    except Exception as e:
+        print(f"Error in downloading music: {e}")
+        await update.reply("مشکلی در دانلود موسیقی پیش آمد.")
+        
+        
+@bot.on_message_updates(filters.is_group,filters.Commands(['قفل'], prefixes=''))
+async def lock_group(update: Updates):
+    group = update.object_guid
+    if group and await update.is_admin(user_guid=update.author_guid):
+    
+        await bot.set_group_default_access(
+            group_guid=group,
+            access_list=[]  # حذف دسترسی ارسال پیام
+        )
+        await update.reply("✅ گروه قفل شد. کاربران نمی‌توانند پیام ارسال کنند.")
+    
+@bot.on_message_updates(filters.is_group , filters.Commands(['باز'], prefixes=''))
+async def unlock_group(update: Updates):
+    group = update.object_guid
+    if group and await update.is_admin(user_guid=update.author_guid):
+        
+    
+        print("Unlocking group with GUID:", group)  # دیباگ GUID
+        try:
+            await bot.set_group_default_access(
+                group_guid=group,
+                access_list=["SendMessages"]  # فعال کردن ارسال پیام
+            )
+            await update.reply("🔓 گروه باز شد. اکنون کاربران می‌توانند پیام ارسال کنند.")
+        except Exception as e:
+            print("Error while unlocking group:", e)
+            await update.reply("خطا در باز کردن گروه. لطفاً دوباره امتحان کنید.")
+            
+
+
+
+@bot.on_message_updates(filters.text,filters.is_group)
+async def send_music_gapp(update: Updates):
+    user_message = update.text.strip()
+    
+    # بررسی شروع پیام با "سرچ"
+    if user_message.startswith("ارسال"):
+        await update.reply("صبرکنید لطفا ...")
+        search_text = user_message[len("ارسال"):].strip()
+        song_info = get_song(search_text)
+        
+        if "error" in song_info:
+            await update.reply(song_info["error"])
+        else:
+            song_title = song_info["title"]
+            song_url = song_info["song"]
+            
+            # اطلاع‌رسانی و ارسال آهنگ با متد reply_music
+            await update.reply(f"آهنگ یافت شد: {song_title}\nدر حال ارسال آهنگ...")
+            await update.reply_music(song_url, caption=f"آهنگ مورد نظر شما یافت شد:\n{song_title}")
+
+
+@bot.on_message_updates(filters.text,filters.is_group)
+async def send_music_voice_call(update: Updates) :
+    user_message = update.text.strip()
+    guid =update.object_guid
+    # بررسی شروع پیام با "سرچ"
+    if user_message.startswith("سرچ"):
+        await update.reply("صبرکنید لطفا ...")
+        
+        search_text = user_message[len("سرچ"):].strip()
+        song_info = get_song(search_text)
+        
+        if "error" in song_info:
+            await update.reply(song_info["error"])
+        else:
+            song_title = song_info["title"]
+            song_url = song_info["song"]
+            
+            # اطلاع‌رسانی و ارسال آهنگ با متد reply_music
+            await update.reply(f"آهنگ یافت شد: {song_title}\nدر حال ارسال آهنگ...")
+            await bot.voice_chat_player(guid,song_url)
+            await update.reply(f"آهنگ مورد نظر شما یافت شد ودرویسکال میتونید گوش کنید: \n{song_title}" )   
+
+@bot.on_message_updates(filters.is_group)
+def prayer_timess(message: Updates):
+    text = message.text.replace('شرعی', "").strip()  
+    if message.text.startswith("شرعی"):
+        message.reply("در حال پردازش... لطفاً صبر کنید 🕒")
+        timings =prayer_times.get_prayer_times(text)
+        
+        if timings:
+            result = (
+                f"اوقات شرعی برای {text}:\n"
+                f"صبح: {timings['Fajr']}\n"
+                f"ظهر و عصر: {timings['Dhuhr']}\n"
+                f"مغرب و عشا: {timings['Maghrib']}"
+            )
+            message.reply(result)  
+        else:
+            message.reply('شهر نامعتبر است یا اطلاعاتی در دسترس نیست.')
+            
+@bot.on_message_updates(filters.is_group,filters.Commands(['fal','فال'],prefixes=''))
+def get_fal_and_send(update: Updates):
+    update.reply("**منتظربمانید تابرایتان فال را اماد کنم**")
+    url = "https://api.api-code.ir/fallhafez2/index.php"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        if data['status'] == 200:
+            result = data['result']
+            number = result['number']
+            ghazal = result['ghazal']
+            voice = result['voice']
+            tabir = result['tabir']
+            message = f"📜 شماره غزل: {number}\n\n📝 متن غزل:\n{ghazal}\n\n🔮 تعبیر:\n{tabir}"
+            update.reply(message)
+            audio_response = requests.get(voice)
+            audio_file = "voice_fal.mp3"
+            with open(audio_file, 'wb') as f:
+                f.write(audio_response.content)
+                update.reply('به زودی ویس فال شما اماده میشه')
+                update.reply_voice(audio_file,caption='بفرماید ویس فال شما')
+        else:
+            update.reply("مشکلی در دریافت فال وجود دارد.")
+    else:
+        update.reply(f"خطا در ارتباط با وب‌سرویس: {response.status_code}")
 bot.run()
