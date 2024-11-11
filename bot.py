@@ -31,9 +31,249 @@ try:
 except ImportError:
     install('requests')
     import requests
-
+    
+try :
+    
+    from deep_translator import GoogleTranslator
+except ImportError :
+    install("deep_translator")
+    from deep_translator import GoogleTranslator
+try :
+    from khayyam import JalaliDatetime
+except ImportError :
+    install("khayyam")
 # ساخت بات
 bot = Client(name='Ai_bot')
+english_to_pahlavi_mapping = {
+    'A': '𐎠', 'B': '𐎡', 'C': '𐎤', 'D': '𐎣', 'E': '𐎠',
+    'F': '𐎦', 'G': '𐎥', 'H': '𐎢', 'I': '𐎡', 'J': '𐎤',
+    'K': '𐎣', 'L': '𐎲', 'M': '𐎫', 'N': '𐎱', 'O': '𐎺',
+    'P': '𐎡', 'Q': '𐎥', 'R': '𐎼', 'S': '𐎴', 'T': '𐎮',
+    'U': '𐎺', 'V': '𐎺', 'W': '𐎺', 'X': '𐎤', 'Y': '𐎡',
+    'Z': '𐎳',
+    'a': '𐎠', 'b': '𐎡', 'c': '𐎤', 'd': '𐎣', 'e': '𐎠',
+    'f': '𐎦', 'g': '𐎥', 'h': '𐎢', 'i': '𐎡', 'j': '𐎤',
+    'k': '𐎣', 'l': '𐎲', 'm': '𐎫', 'n': '𐎱', 'o': '𐎺',
+    'p': '𐎡', 'q': '𐎥', 'r': '𐎼', 's': '𐎴', 't': '𐎮',
+    'u': '𐎺', 'v': '𐎺', 'w': '𐎺', 'x': '𐎤', 'y': '𐎡',
+    'z': '𐎳'
+}
+
+
+english_to_manichaean_mapping = {
+    'A': '𐫀', 'B': '𐫁', 'C': '𐫄', 'D': '𐫆', 'E': '𐫀',
+    'F': '𐫌', 'G': '𐫍', 'H': '𐫅', 'I': '𐫓', 'J': '𐫄',
+    'K': '𐫍', 'L': '𐫎', 'M': '𐫏', 'N': '𐫐', 'O': '𐫑',
+    'P': '𐫡', 'Q': '𐫍', 'R': '𐫇', 'S': '𐫈', 'T': '𐫃',
+    'U': '𐫑', 'V': '𐫑', 'W': '𐫑', 'X': '𐫄', 'Y': '𐫓',
+    'Z': '𐫧',
+    'a': '𐫀', 'b': '𐫁', 'c': '𐫄', 'd': '𐫆', 'e': '𐫀',
+    'f': '𐫌', 'g': '𐫍', 'h': '𐫅', 'i': '𐫓', 'j': '𐫄',
+    'k': '𐫍', 'l': '𐫎', 'm': '𐫏', 'n': '𐫐', 'o': '𐫑',
+    'p': '𐫡', 'q': '𐫍', 'r': '𐫇', 's': '𐫈', 't': '𐫃',
+    'u': '𐫑', 'v': '𐫑', 'w': '𐫑', 'x': '𐫄', 'y': '𐫓',
+    'z': '𐫧'
+}
+english_to_manichaean_mapping.update(
+    {
+    '-': '𐎽', '/': '𐏁', '+': '𐏃', '÷': '𐏄', '!': '𐏂',
+    '#': '𐏃', '%': '𐏀', '^': '𐎼', '$': '𐏅', '"': '𐎿',
+    '>': '𐏆', '<': '𐏇', 'ء': '𐎠', 'أ': '𐎡', 'إ': '𐎢',
+    'ؤ': '𐎣', 'ژ': '𐎤', 'ي': '𐎥', 'ة': '𐎦', 'ِ': '𐎧',
+    'ّ': '𐎨', 'ۀ': '𐎩', 'آ': '𐎪', 'ـ': '𐎫', '؛': '𐎬',
+    '،': '𐎭', 'ريال': '𐎮', ',': '𐎯', ']': '𐎰', '[': '𐎱',
+    '\\': '𐎲', '»': '𐎳', '&': '𐎴', '*': '𐎵', '(': '𐎶',
+    ')': '𐎷'
+    # بقیه کاراکترهای خاص را می‌توان اضافه کرد
+}
+)
+
+english_to_cuneiform_mapping = {
+    'a': '𒀀', 'b': '𒁀', 'c': '𒄀', 'd': '𒁲', 'e': '𒂊',
+    'f': '𒆳', 'g': '𒄖', 'h': '𒄩', 'i': '𒄿', 'j': '𒋛',
+    'k': '𒆠', 'l': '𒇻', 'm': '𒈠', 'n': '𒉈', 'o': '𒌋',
+    'p': '𒉿', 'q': '𒆥', 'r': '𒊑', 's': '𒊍', 't': '𒋗',
+    'u': '𒌑', 'v': '𒅅', 'w': '𒉿', 'x': '𒍝', 'y': '𒅀',
+    'z': '𒍣',
+    'A': '𒀀', 'B': '𒁀', 'C': '𒄀', 'D': '𒁲', 'E': '𒂊',
+    'F': '𒆳', 'G': '𒄖', 'H': '𒄩', 'I': '𒄿', 'J': '𒋛',
+    'K': '𒆠', 'L': '𒇻', 'M': '𒈠', 'N': '𒉈', 'O': '𒌋',
+    'P': '𒉿', 'Q': '𒆥', 'R': '𒊑', 'S': '𒊍', 'T': '𒋗',
+    'U': '𒌑', 'V': '𒅅', 'W': '𒉿', 'X': '𒍝', 'Y': '𒅀',
+    'Z': '𒍣'
+}
+
+persian_to_cuneiform_mapping = {
+    'آ': '𒀀', 'ا': '𒀀', 'ب': '𒁀', 'پ': '𒁀', 'ت': '𒁲',
+    'ث': '𒁲', 'ج': '𒄀', 'چ': '𒄀', 'ح': '𒄩', 'خ': '𒄩',
+    'د': '𒁲', 'ذ': '𒁲', 'ر': '𒊑', 'ز': '𒍣', 'ژ': '𒍣',
+    'س': '𒊍', 'ش': '𒊍', 'ص': '𒋗', 'ض': '𒋗', 'ط': '𒋗',
+    'ظ': '𒋗', 'ع': '𒆳', 'غ': '𒆳', 'ف': '𒆥', 'ق': '𒆥',
+    'ک': '𒆠', 'گ': '𒄖', 'ل': '𒇻', 'م': '𒈠', 'ن': '𒉈',
+    'و': '𒌋', 'ه': '𒂊', 'ی': '𒅀'
+}
+persian_to_cuneiform_mapping.update(
+    {
+        'ئ''𐎠',
+    }
+)
+persian_to_pahlavi_mapping = {
+    'آ': '𐎠', 'ا': '𐎠', 'ب': '𐎡', 'پ': '𐎡', 'ت': '𐎮',
+    'ث': '𐎮', 'ج': '𐎤', 'چ': '𐎤', 'ح': '𐎢', 'خ': '𐎢',
+    'د': '𐎣', 'ذ': '𐎣', 'ر': '𐎼', 'ز': '𐎳', 'ژ': '𐎳',
+    'س': '𐎴', 'ش': '𐎴', 'ص': '𐎧', 'ض': '𐎧', 'ط': '𐎧',
+    'ظ': '𐎧', 'ع': '𐎦', 'غ': '𐎦', 'ف': '𐎦', 'ق': '𐎦',
+    'ک': '𐎠', 'گ': '𐎵', 'ل': '𐎲', 'م': '𐎫', 'ن': '𐎱',
+    'و': '𐎺', 'ه': '𐎺', 'ی': '𐎡'
+}
+persian_to_pahlavi_mapping.update(
+    {
+        'ئ''𐎠',
+    }
+
+)
+persian_to_pahlavi_mapping.update(
+       {
+    '-': '𐎽', '/': '𐏁', '+': '𐏃', '÷': '𐏄', '!': '𐏂',
+    '#': '𐏃', '%': '𐏀', '^': '𐎼', '$': '𐏅', '"': '𐎿',
+    '>': '𐏆', '<': '𐏇', 'ء': '𐎠', 'أ': '𐎡', 'إ': '𐎢',
+    'ؤ': '𐎣', 'ژ': '𐎤', 'ي': '𐎥', 'ة': '𐎦', 'ِ': '𐎧',
+    'ّ': '𐎨', 'ۀ': '𐎩', 'آ': '𐎪', 'ـ': '𐎫', '؛': '𐎬',
+    '،': '𐎭', 'ريال': '𐎮', ',': '𐎯', ']': '𐎰', '[': '𐎱',
+    '\\': '𐎲', '»': '𐎳', '&': '𐎴', '*': '𐎵', '(': '𐎶',
+    ')': '𐎷'
+    # بقیه کاراکترهای خاص را می‌توان اضافه کرد
+}
+)
+persian_to_manichaean_mapping = {
+    'آ': '𐫀', 'ا': '𐫀', 'ب': '𐫁', 'پ': '𐫡', 'ت': '𐫃',
+    'ث': '𐫣', 'ج': '𐫄', 'چ': '𐫤', 'ح': '𐫅', 'خ': '𐫥',
+    'د': '𐫆', 'ذ': '𐫦', 'ر': '𐫇', 'ز': '𐫧', 'ژ': '𐫨',
+    'س': '𐫈', 'ش': '𐫩', 'ص': '𐫉', 'ض': '𐫪', 'ط': '𐫊',
+    'ظ': '𐫫', 'ع': '𐫋', 'غ': '𐫬', 'ف': '𐫌', 'ق': '𐫭',
+    'ک': '𐫍', 'گ': '𐫮', 'ل': '𐫎', 'م': '𐫏', 'ن': '𐫐',
+    'و': '𐫑', 'ه': '𐫒', 'ی': '𐫓'
+}
+persian_to_cuneiform_mapping.update(
+    {
+    '-': '𐎽', '/': '𐏁', '+': '𐏃', '÷': '𐏄', '!': '𐏂',
+    '#': '𐏃', '%': '𐏀', '^': '𐎼', '$': '𐏅', '"': '𐎿',
+    '>': '𐏆', '<': '𐏇', 'ء': '𐎠', 'أ': '𐎡', 'إ': '𐎢',
+    'ؤ': '𐎣', 'ژ': '𐎤', 'ي': '𐎥', 'ة': '𐎦', 'ِ': '𐎧',
+    'ّ': '𐎨', 'ۀ': '𐎩', 'آ': '𐎪', 'ـ': '𐎫', '؛': '𐎬',
+    '،': '𐎭', 'ريال': '𐎮', ',': '𐎯', ']': '𐎰', '[': '𐎱',
+    '\\': '𐎲', '»': '𐎳', '&': '𐎴', '*': '𐎵', '(': '𐎶',
+    ')': '𐎷'
+   
+}
+)
+persian_to_manichaean_mapping.update(
+    {'ئ':'𐎠'}
+)
+
+english_to_pahlavi_mapping.update({
+    '0': '𐏎', '1': '𐏑', '2': '𐏒', '3': '𐏓', '4': '𐏔',
+    '5': '𐏕', '6': '𐏖', '7': '𐏗', '8': '𐏘', '9': '𐏙'
+})
+
+english_to_manichaean_mapping.update({
+    '0': '𐫰', '1': '𐫱', '2': '𐫲', '3': '𐫳', '4': '𐫴',
+    '5': '𐫵', '6': '𐫶', '7': '𐫷', '8': '𐫸', '9': '𐫹'
+})
+
+english_to_cuneiform_mapping.update({
+    '0': '𒐀', '1': '𒐁', '2': '𒐂', '3': '𒐃', '4': '𒐄',
+    '5': '𒐅', '6': '𒐆', '7': '𒐇', '8': '𒐈', '9': '𒐉'
+})
+
+
+english_to_cuneiform_mapping.update(
+    {
+    '-': '𐎽', '/': '𐏁', '+': '𐏃', '÷': '𐏄', '!': '𐏂',
+    '#': '𐏃', '%': '𐏀', '^': '𐎼', '$': '𐏅', '"': '𐎿',
+    '>': '𐏆', '<': '𐏇', 'ء': '𐎠', 'أ': '𐎡', 'إ': '𐎢',
+    'ؤ': '𐎣', 'ژ': '𐎤', 'ي': '𐎥', 'ة': '𐎦', 'ِ': '𐎧',
+    'ّ': '𐎨', 'ۀ': '𐎩', 'آ': '𐎪', 'ـ': '𐎫', '؛': '𐎬',
+    '،': '𐎭', 'ريال': '𐎮', ',': '𐎯', ']': '𐎰', '[': '𐎱',
+    '\\': '𐎲', '»': '𐎳', '&': '𐎴', '*': '𐎵', '(': '𐎶',
+    ')': '𐎷'
+    # بقیه کاراکترهای خاص را می‌توان اضافه کرد
+}
+)
+
+
+english_to_hieroglyph_mapping = {
+    'A': '𓀀', 'B': '𓃀', 'C': '𓍿', 'D': '𓂧', 'E': '𓇋',
+    'F': '𓆑', 'G': '𓎼', 'H': '𓉔', 'I': '𓇋', 'J': '𓊃',
+    'K': '𓎡', 'L': '𓃭', 'M': '𓈖', 'N': '𓈖', 'O': '𓂋',
+    'P': '𓊪', 'Q': '𓏘', 'R': '𓂋', 'S': '𓋴', 'T': '𓏏',
+    'U': '𓅱', 'V': '𓆑', 'W': '𓅱', 'X': '𓐙', 'Y': '𓇌',
+    'Z': '𓊃',
+    'a': '𓀀', 'b': '𓃀', 'c': '𓍿', 'd': '𓂧', 'e': '𓇋',
+    'f': '𓆑', 'g': '𓎼', 'h': '𓉔', 'i': '𓇋', 'j': '𓊃',
+    'k': '𓎡', 'l': '𓃭', 'm': '𓈖', 'n': '𓈖', 'o': '𓂋',
+    'p': '𓊪', 'q': '𓏘', 'r': '𓂋', 's': '𓋴', 't': '𓏏',
+    'u': '𓅱', 'v': '𓆑', 'w': '𓅱', 'x': '𓐙', 'y': '𓇌',
+    'z': '𓊃'
+}
+
+# مپینگ هیروگلیف به فارسی
+persian_to_hieroglyph_mapping = {
+    'آ': '𓀀', 'ا': '𓀀', 'ب': '𓃀', 'پ': '𓊪', 'ت': '𓏏',
+    'ث': '𓋴', 'ج': '𓍿', 'چ': '𓊃', 'ح': '𓉔', 'خ': '𓎼',
+    'د': '𓂧', 'ذ': '𓋴', 'ر': '𓂋', 'ز': '𓊃', 'ژ': '𓍿',
+    'س': '𓋴', 'ش': '𓋴', 'ص': '𓋴', 'ض': '𓋴', 'ط': '𓏏',
+    'ظ': '𓋴', 'ع': '𓀀', 'غ': '𓎼', 'ف': '𓆑', 'ق': '𓏘',
+    'ک': '𓎡', 'گ': '𓎼', 'ل': '𓃭', 'م': '𓈖', 'ن': '𓈖',
+    'و': '𓅱', 'ه': '𓉔', 'ی': '𓇌'
+}
+
+
+
+linear_b_dict = {
+    
+    "a": "𐀀", "A": "𐁀", "b": "𐀁", "B": "𐁁", "c": "𐀂", "C": "𐁂",
+    "d": "𐀃", "D": "𐁃", "e": "𐀄", "E": "𐁄", "f": "𐀅", "F": "𐁅",
+    "g": "𐀆", "G": "𐁆", "h": "𐀇", "H": "𐁇", "i": "𐀈", "I": "𐁈",
+    "j": "𐀉", "J": "𐁉", "k": "𐀊", "K": "𐁊", "l": "𐀋", "L": "𐁋",
+    "m": "𐀌", "M": "𐁌", "n": "𐀍", "N": "𐁍", "o": "𐀎", "O": "𐁎",
+    "p": "𐀏", "P": "𐁏", "q": "𐀐", "Q": "𐁐", "r": "𐀑", "R": "𐁑",
+    "s": "𐀒", "S": "𐁒", "t": "𐀓", "T": "𐁓", "u": "𐀔", "U": "𐁔",
+    "v": "𐀕", "V": "𐁕", "w": "𐀖", "W": "𐁖", "x": "𐀗", "X": "𐁗",
+    "y": "𐀘", "Y": "𐁘", "z": "𐀙", "Z": "𐁙",
+
+    # حروف فارسی
+    "ا": "𐀀", "ب": "𐀁", "پ": "𐀏", "ت": "𐀓", "ث": "𐀒", 
+    "ج": "𐀉", "چ": "𐀇", "ح": "𐀄", "خ": "𐀊", "د": "𐀃", 
+    "ذ": "𐀄", "ر": "𐀑", "ز": "𐀙", "ژ": "𐀖", "س": "𐀒", 
+    "ش": "𐀕", "ص": "𐀒", "ض": "𐀓", "ط": "𐀓", "ظ": "𐀑", 
+    "ع": "𐀀", "غ": "𐀆", "ف": "𐀅", "ق": "𐀐", "ک": "𐀊", 
+    "گ": "𐀆", "ل": "𐀋", "م": "𐀌", "ن": "𐀍", "و": "𐀎", 
+    "ه": "𐀇", "ی": "𐀘",
+
+ 
+    "0": "𐄁", "1": "𐄀", "2": "𐄂", "3": "𐄃", "4": "𐄄",
+    "5": "𐄅", "6": "𐄆", "7": "𐄇", "8": "𐄈", "9": "𐄉",
+
+
+    " ": " ", ".": "𐄁", ",": "𐄂", "?": "𐄃", "!": "𐄄"
+}
+
+def convert_to_cuneiform(text):
+    return ''.join(english_to_cuneiform_mapping.get(char, persian_to_cuneiform_mapping.get(char, char)) for char in text)
+
+def convert_to_pahlavi(text):
+    return ''.join(english_to_pahlavi_mapping.get(char, persian_to_pahlavi_mapping.get(char, char)) for char in text)
+
+def convert_to_manichaean(text):
+    return ''.join(english_to_manichaean_mapping.get(char, persian_to_manichaean_mapping.get(char, char)) for char in text)
+
+def convert_to_hieroglyph(text):
+    return ''.join(english_to_hieroglyph_mapping.get(char, persian_to_hieroglyph_mapping.get(char, char)) for char in text)
+
+def text_to_linear_b_optimized(text):
+
+    return ''.join([linear_b_dict.get(char, char) for char in text])
 
 music_styles = [
     "1- Pop 🎉", "2- Intense 🔥", "3- Violin 🎻", "4- Anthemic 🎺", 
@@ -297,42 +537,86 @@ text_lock = False
 voice_lock=False
 user_data = {}
 is_reporting = {}
-GROUP_GUID='guid'
+TARGET_GROUP_ID = "گوید گروه"
+owners="گوید خودت"
 # تابع بررسی اینکه آیا کاربر ادمین است یا نه
 MEMBERS_PER_MESSAGE = 50
 
+link_locked = True 
+global_status = True  # وضعیت کلی ربات
+# تابع مدیریت پیام‌ها
+def check_status():
+    if not global_status:
+        return False
+    return True
 # تابع مدیریت پیام‌ها
 @bot.on_message_updates(filters.is_group)
-async def updates(update: Updates):
-    print(updates)
-    print(update)
-    user_id = update.author_guid  # شناسه کاربر فرستنده پیام
-    message_text = update.text  # متن پیام
-    chat_id = update.object_guid  # شناسه گروه
-
+async def toggle_status(update: Updates):
+    global global_status
+    if update.object_guid != TARGET_GROUP_ID:
+        return  # اگر پیام از گروه مجاز نباشد، تابع خاتمه می‌یابد و پاسخی نمی‌دهد
     
 
-        # شناسایی لینک یا آیدی در پیام
+    # بررسی دستورات "فعال" و "خاموش"
+    if update.text == "فعال":
+        global_status = True
+        await update.reply("ربات اکنون فعال است.")
+    elif update.text == "خاموش":
+        global_status = False
+        await update.reply("ربات خاموش شد و دیگر به دستورات پاسخ نمی‌دهد.")
+@bot.on_message_updates(filters.is_group)
+async def updates(update: Updates):
+    
+    global link_locked  # استفاده از متغیر سراسری
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
+    group=update.object_guid
+    user_id = update.author_guid  # شناسه کاربر فرستنده پیام
+    message_text = update.text.strip()  # متن پیام
+    chat_id = update.object_guid  # شناسه گروه
+    if not check_status():
+        return
+    
+    
+    if group and await update.is_admin(user_guid=update.author_guid):
+    # دستورات مدیریت لینک‌ها
+        if message_text == "لینک_قفل":
+            link_locked = True
+            await update.reply("🚫 ارسال لینک‌ها در گروه قفل شد.")
+            return
+        
+        if message_text == "ازاد_لینک":
+            link_locked = False
+            await update.reply("✅ ارسال لینک‌ها در گروه آزاد شد.")
+            return
+    
+    # بررسی لینک در پیام و وضعیت قفل لینک‌ها
     if re.search(LINK_REGEX, message_text):
-        # بررسی اینکه کاربر ادمین است یا نه
-        is_admin = await update.is_admin(chat_id, user_id)  # استفاده از await برای فراخوانی متد
+        # چک کردن اگر لینک‌ها آزاد هستند
+        if not link_locked:
+            await update.reply("✅ لینک‌ها باز هستند، ارسال لینک مشکلی ندارد.")
+            return
 
+        # بررسی اینکه کاربر ادمین است یا نه
+        is_admin = await update.is_admin(chat_id, user_id)
         if is_admin:
-            # اگر کاربر ادمین باشد، لینک مجاز است
-            await update.reply("✅ شما ادمین هستید و مجاز به ارسال لینک.")
+            await update.reply("شما مجاز به ارسال لینک هستید چون ادمین هستید.")
         else:
-            # اگر کاربر ادمین نباشد، لینک را شناسایی کرده و اخطار می‌دهد
+            # اگر کاربر ادمین نباشد و لینک‌ها قفل باشند، اخطار می‌گیرد
             if user_id in warnings:
                 warnings[user_id] += 1
             else:
                 warnings[user_id] = 1
 
-            await update.reply(f"🚫 شما مجاز به ارسال لینک نیستید! این {warnings[user_id]}مین اخطار شماست.")
+            await update.reply(f"🚫 ارسال لینک در گروه ممنوع است! این {warnings[user_id]}مین اخطار شماست.")
             await update.delete_messages()  # حذف پیام
 
             # اگر تعداد اخطارها از حد مجاز بیشتر شد، کاربر را حذف می‌کنیم
             if warnings[user_id] >= MAX_WARNINGS:
-                await update.reply("🚨 شما به دلیل ارسال مکرر لینک، از گروه حذف می‌شوید.")
+                await update.reply("🚨 به دلیل ارسال مکرر لینک، شما از گروه حذف می‌شوید.")
                 await update.ban_member()  # حذف یا بن کردن کاربر
                 del warnings[user_id]  # پاک کردن رکورد کاربر پس از حذف
 
@@ -344,7 +628,11 @@ async def updates(update: Updates):
 @bot.on_message_updates(filters.is_group, filters.Commands(['اخطار', 'رعایت'], prefixes=''))
 async def warn_or_ban_user_by_admin(update: Updates):
     group = update.object_guid
-   
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
+    if not check_status():
+        return
         
     try:
         if group and await update.is_admin(user_guid=update.author_guid):  # بررسی اینکه کاربر ادمین است
@@ -384,8 +672,12 @@ async def warn_or_ban_user_by_admin(update: Updates):
   
 @bot.on_message_updates(filters.is_group, filters.Commands(['بن', 'اخراج'], prefixes=''))
 def ban_user_by_admin(update: Updates):
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
     group = update.object_guid
-   
+    if not check_status():
+        return
     try:
         try:
             try:
@@ -419,7 +711,11 @@ def toggle_locks(update: Updates):
     global  gif_lock
     global voice_lock
     group = update.object_guid
-    
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
+    if not check_status():
+        return
     if group and update.is_admin(user_guid=update.author_guid):
         if update.text == "/قفل_عکس":
             photo_lock = True
@@ -457,8 +753,12 @@ def toggle_locks(update: Updates):
 
 @bot.on_message_updates(filters.photo,filters.is_group)
 def handle_photo_message(update: Updates):
-
+    if not check_status():
+        return
     global photo_lock
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
   
     if photo_lock:
         # حذف پیام عکس
@@ -469,7 +769,11 @@ def handle_photo_message(update: Updates):
 @bot.on_message_updates(filters.text,filters.is_group)
 def handle_text_message(update: Updates):
     global text_lock
-    
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
         
     if text_lock:
         # حذف پیام متنی
@@ -485,7 +789,11 @@ def handle_text_message(update: Updates):
 @bot.on_message_updates(filters.gif,filters.is_group)
 def handle_gif_message(update: Updates):
     global gif_lock
-    
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
     if gif_lock:
         update.delete()
         update.reply("پیام های حاوی گیف پاک میشوند")
@@ -498,15 +806,23 @@ def handle_gif_message(update: Updates):
 @bot.on_message_updates(filters.is_group,filters.Commands(['دستورات','help'],prefixes=''))  
 def send_command(update: Updates)   :
     
-
+    if update.object_guid != TARGET_GROUP_ID:
         
+        return
+    if not check_status():
+        return
     update.reply(help_)
        
        
       
 @bot.on_message_updates(filters.voice,filters.is_group)     
 def handle_voice_message(update: Updates):
-    
+    if not check_status():
+        return
+       
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
     if voice_lock :
         update.delete()
         update.reply("پیام های حاوی ویس پاک میشن")
@@ -526,6 +842,11 @@ def handle_voice_message(update: Updates):
 @bot.on_message_updates(filters.is_group)
 def handle_message_text(update: Updates):
     greeting_message = random.choice(responses_dict['greetings'])
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
     if update.text.startswith('+'):
         update.reply("لطفاً کمی صبر کنید، در حال پردازش درخواست شما هستیم. "
               "اگر با تأخیر مواجه شدید، ممکن است وب‌سرویس شلوغ یا در حال تعمیر باشد. "
@@ -592,6 +913,11 @@ def handle_message_text(update: Updates):
 
 @bot.on_message_updates(filters.is_group)
 def generate_image_from_text(update: Updates):
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
     if update.text.startswith('تصویر'):
         input_image =update.text.replace('تصویر','').strip()
         
@@ -649,7 +975,12 @@ def generate_image_from_text(update: Updates):
 
 @bot.on_message_updates(filters.is_group, filters.Commands(['لینک', 'link'], ''))
 def send_group_link(update: Updates): 
+    if not check_status():
+        return
     group = update.object_guid
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
     if group:
         link = bot.get_group_link(update.object_guid)
         return  update.reply(f' بفرماید لینک گروه\n{link.join_link}')
@@ -661,7 +992,11 @@ def send_group_link(update: Updates):
 @bot.on_message_updates(filters.Commands(['موزیک'],prefixes=''), filters.is_group)
 async def music(update: Updates):
     user_id = update.object_guid
-
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
+    if not check_status():
+        return
     # اگر کاربری در حال استفاده از ربات است، به کاربر جدید پاسخ داده نشود
     if any('style' in user for user in user_data.values()):
         await update.reply("لطفاً صبر کنید، یک کاربر دیگر در حال استفاده از ربات است.")
@@ -681,6 +1016,12 @@ async def music(update: Updates):
 # هندلر برای نمایش راهنما
 @bot.on_message_updates(filters.Commands(['کمک'],prefixes=''), filters.is_group)
 async def help_command(update: Updates):
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
+    
     help_message = (
         "/موزیک - شروع و انتخاب سبک موسیقی\n"
         "/کمک - دریافت راهنما\n"
@@ -691,8 +1032,12 @@ async def help_command(update: Updates):
 # هندلر برای دریافت سبک و متن آهنگ
 @bot.on_message_updates(filters.is_group)
 async def choose_style(update: Updates):
-    user_id = update.object_guid
-
+    user_id = update.author_guid
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
     # فقط به کاربرانی که دستور "/موزیک" را فرستاده‌اند پاسخ بدهد
     if user_id not in user_data:
         return
@@ -769,6 +1114,11 @@ async def send_music(update: Updates, music_url):
         
 @bot.on_message_updates(filters.is_group,filters.Commands(['قفل'], prefixes=''))
 async def lock_group(update: Updates):
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
     group = update.object_guid
     if group and await update.is_admin(user_guid=update.author_guid):
     
@@ -781,6 +1131,8 @@ async def lock_group(update: Updates):
 @bot.on_message_updates(filters.is_group , filters.Commands(['باز'], prefixes=''))
 async def unlock_group(update: Updates):
     group = update.object_guid
+    if not check_status():
+        return
     if group and await update.is_admin(user_guid=update.author_guid):
         
     
@@ -801,7 +1153,11 @@ async def unlock_group(update: Updates):
 @bot.on_message_updates(filters.text,filters.is_group)
 async def send_music_gapp(update: Updates):
     user_message = update.text.strip()
-    
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
+    if not check_status():
+        return
     # بررسی شروع پیام با "سرچ"
     if user_message.startswith("ارسال"):
         await update.reply("صبرکنید لطفا ...")
@@ -823,6 +1179,11 @@ async def send_music_gapp(update: Updates):
 async def send_music_voice_call(update: Updates) :
     user_message = update.text.strip()
     guid =update.object_guid
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
+    if not check_status():
+        return
     # بررسی شروع پیام با "سرچ"
     if user_message.startswith("سرچ"):
         await update.reply("صبرکنید لطفا ...")
@@ -843,6 +1204,11 @@ async def send_music_voice_call(update: Updates) :
 
 @bot.on_message_updates(filters.is_group)
 def prayer_timess(message: Updates):
+    if not check_status():
+        return
+    if message.object_guid != TARGET_GROUP_ID:
+        
+        return
     text = message.text.replace('شرعی', "").strip()  
     if message.text.startswith("شرعی"):
         message.reply("در حال پردازش... لطفاً صبر کنید 🕒")
@@ -861,6 +1227,11 @@ def prayer_timess(message: Updates):
             
 @bot.on_message_updates(filters.is_group,filters.Commands(['fal','فال'],prefixes=''))
 def get_fal_and_send(update: Updates):
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
     update.reply("**منتظربمانید تابرایتان فال را اماد کنم**")
     url = "https://api.api-code.ir/fallhafez2/index.php"
     response = requests.get(url)
@@ -884,4 +1255,64 @@ def get_fal_and_send(update: Updates):
             update.reply("مشکلی در دریافت فال وجود دارد.")
     else:
         update.reply(f"خطا در ارتباط با وب‌سرویس: {response.status_code}")
+
+@bot.on_message_updates(filters.is_group)
+def ancientline(update: Updates):
+    if not check_status():
+        return
+    if update.object_guid != TARGET_GROUP_ID:
+        
+        return
+    input_text = update.text.strip()
+    
+    if input_text.startswith("باستانی"):
+        # حذف "باستانی" از ابتدای متن
+        input_text = input_text.replace("باستانی", "", 1).strip()
+        
+        # تبدیل متن به خطوط مختلف
+        cuneiform_output = convert_to_cuneiform(input_text)
+        pahlavi_output = convert_to_pahlavi(input_text)
+        manavi_output = convert_to_manichaean(input_text)
+        hieroglyph = convert_to_hieroglyph(input_text)
+        hw = GoogleTranslator(source='auto', target='iw').translate(input_text)
+        linear_b_optimized = text_to_linear_b_optimized(input_text)
+        update.reply('**در حال تبدیل متن شما به خطوط باستانی..**')
+        # ارسال پیام تبدیل خطوط باستانی
+        response = (
+            f"**زبا های باستانی تبدیل شده :**\n\n"
+            f"متن به خط میخی:\n{cuneiform_output}\n\n"
+            f"متن به خط پهلوی:\n{pahlavi_output}\n\n"
+            f"متن به خط مانوی:\n{manavi_output}\n\n"
+            f"متن به خط هیروگلیف مصری:\n{hieroglyph}\n\n"
+            f"متن به خط عبری باستانی:\n{hw}\n\n"
+            f"متن به خط میکنی:\n{linear_b_optimized}\n\n"
+        )
+        
+        # ارسال پاسخ نهایی
+        update.reply(response)
+        
+@bot.on_message_updates(filters.is_group, filters.Commands(["تاریخ", "زمان"], prefixes=''))
+def send_data(update: Updates):
+    if not check_status():
+        return
+    # زمان فعلی به شمسی
+    current_time_jalali = JalaliDatetime.today().strftime("%A %d %B %Y")
+    
+    # زمان فعلی به میلادی
+    current_time_gregorian = datetime.now()
+    gregorian_date = current_time_gregorian.strftime("%A %d %B %Y - %H:%M:%S")
+
+    if current_time_gregorian.hour < 12:
+        day_night = "روز بخیر"
+    else:
+        day_night = "شب بخیر"
+    # ساخت متن خروجی به صورت یک رشته
+    result = (
+        f"{day_night}!\n\n"
+        f"تاریخ به شمسی:\n{current_time_jalali}\n"
+        f"تاریخ به میلادی:\n{gregorian_date}"
+    )
+    # ارسال پیام به گروه
+    update.reply(result)
+
 bot.run()
