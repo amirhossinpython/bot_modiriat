@@ -5,7 +5,7 @@ from datetime import datetime
 import sqlite3
 import re
 import random
-from chat_bot import chat_bot_response,get_song
+from chat_bot import get_chatbot_response,get_song
 import asyncio
 import prayer_times
 from PIL import Image
