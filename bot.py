@@ -5,7 +5,7 @@ import sys
 required_libraries = [
     "aiohttp", "arabic_reshaper", "bidi", "beautifulsoup4", "deep_translator",
     "gtts", "khayyam", "num2words", "Pillow", "pycoingecko",
-    "requests", "rubpy", "scrapy", "twisted", "google"
+    "requests", "rubpy", "scrapy", "twisted", "google","nltk","qrcode","jdatetime"," phonenumbers"
 ]
 
 # تابع برای نصب کتابخانه
@@ -3910,6 +3910,7 @@ bot.run()
     
           
 # راه‌اندازی ربات               
+
 
 
 
